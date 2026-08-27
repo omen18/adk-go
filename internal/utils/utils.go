@@ -20,7 +20,6 @@ import (
 
 	"google.golang.org/genai"
 
-	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/platform"
 	"google.golang.org/adk/v2/session"
@@ -127,7 +126,7 @@ func FunctionDecls(c *genai.GenerateContentConfig) (ret []*genai.FunctionDeclara
 	return ret
 }
 
-func Must[T agent.Agent](a T, err error) T {
+func Must[T any](a T, err error) T {
 	if err != nil {
 		panic(err)
 	}

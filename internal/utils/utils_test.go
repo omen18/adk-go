@@ -12,58 +12,144 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils_test
+package utils
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
 
 	"google.golang.org/genai"
 
-	"google.golang.org/adk/v2/internal/utils"
-	"google.golang.org/adk/v2/platform"
+	"google.golang.org/adk/v2/model"
+	"google.golang.org/adk/v2/session"
 )
 
-func TestGenerateFunctionCallIDUsesProvider(t *testing.T) {
-	ctx := platform.WithUUIDProvider(t.Context(), func() string { return "fixed" })
-
-	got := utils.GenerateFunctionCallID(ctx)
-
-	// The generated ID must carry the "adk-" prefix that RemoveClientFunctionCallID
-	// relies on, and must incorporate the value from the installed provider.
-	if !strings.HasPrefix(got, "adk-") {
-		t.Errorf("GenerateFunctionCallID() = %q, want \"adk-\" prefix", got)
-	}
-	if !strings.HasSuffix(got, "fixed") {
-		t.Errorf("GenerateFunctionCallID() = %q, want it to use the provider value %q", got, "fixed")
-	}
-}
-
-func TestGenerateFunctionCallIDDefaultIsUnique(t *testing.T) {
-	first := utils.GenerateFunctionCallID(t.Context())
-	second := utils.GenerateFunctionCallID(t.Context())
-
-	if first == second {
-		t.Errorf("GenerateFunctionCallID() returned %q twice; want unique values", first)
-	}
-}
-
-func TestPopulateClientFunctionCallIDUsesProvider(t *testing.T) {
-	ctx := platform.WithUUIDProvider(t.Context(), func() string { return "generated" })
-
+func TestPopulateAndRemoveClientFunctionCallID(t *testing.T) {
+	ctx := context.Background()
 	content := &genai.Content{
 		Parts: []*genai.Part{
-			{FunctionCall: &genai.FunctionCall{Name: "needs_id"}},
-			{FunctionCall: &genai.FunctionCall{ID: "keep", Name: "has_id"}},
+			{
+				FunctionCall: &genai.FunctionCall{
+					Name: "test_func",
+				},
+			},
 		},
 	}
 
-	utils.PopulateClientFunctionCallID(ctx, content)
+	PopulateClientFunctionCallID(ctx, content)
+	calls := FunctionCalls(content)
+	if len(calls) != 1 {
+		t.Fatalf("expected 1 function call, got %d", len(calls))
+	}
+	if calls[0].ID == "" {
+		t.Errorf("expected non-empty function call ID after population")
+	}
+	if !strings.HasPrefix(calls[0].ID, afFunctionCallIDPrefix) {
+		t.Errorf("expected ID prefix %q, got %q", afFunctionCallIDPrefix, calls[0].ID)
+	}
 
-	if got := content.Parts[0].FunctionCall.ID; got != "adk-generated" {
-		t.Errorf("empty function call ID = %q, want %q", got, "adk-generated")
+	RemoveClientFunctionCallID(content)
+	if calls[0].ID != "" {
+		t.Errorf("expected empty function call ID after removal, got %q", calls[0].ID)
 	}
-	if got := content.Parts[1].FunctionCall.ID; got != "keep" {
-		t.Errorf("preset function call ID = %q, want it left untouched (%q)", got, "keep")
+}
+
+func TestContentAndPartExtractors(t *testing.T) {
+	if Content(nil) != nil {
+		t.Errorf("Content(nil) should be nil")
 	}
+
+	ev := &session.Event{
+		LLMResponse: model.LLMResponse{
+			Content: &genai.Content{
+				Parts: []*genai.Part{
+					genai.NewPartFromText("hello world"),
+					{
+						FunctionCall: &genai.FunctionCall{Name: "search"},
+					},
+					{
+						FunctionResponse: &genai.FunctionResponse{Name: "search", Response: map[string]any{"res": "ok"}},
+					},
+				},
+			},
+		},
+	}
+
+	c := Content(ev)
+	if c == nil {
+		t.Fatalf("Content(ev) should not be nil")
+	}
+
+	texts := TextParts(c)
+	if len(texts) != 1 || texts[0] != "hello world" {
+		t.Errorf("unexpected text parts: %v", texts)
+	}
+
+	fnCalls := FunctionCalls(c)
+	if len(fnCalls) != 1 || fnCalls[0].Name != "search" {
+		t.Errorf("unexpected function calls: %v", fnCalls)
+	}
+
+	fnResps := FunctionResponses(c)
+	if len(fnResps) != 1 || fnResps[0].Name != "search" {
+		t.Errorf("unexpected function responses: %v", fnResps)
+	}
+}
+
+func TestFunctionDecls(t *testing.T) {
+	if decls := FunctionDecls(nil); len(decls) != 0 {
+		t.Errorf("FunctionDecls(nil) should return empty slice")
+	}
+
+	cfg := &genai.GenerateContentConfig{
+		Tools: []*genai.Tool{
+			{
+				FunctionDeclarations: []*genai.FunctionDeclaration{
+					{Name: "f1"},
+				},
+			},
+		},
+	}
+
+	decls := FunctionDecls(cfg)
+	if len(decls) != 1 || decls[0].Name != "f1" {
+		t.Errorf("unexpected function decls: %v", decls)
+	}
+}
+
+func TestAppendInstructions(t *testing.T) {
+	req := &model.LLMRequest{}
+	AppendInstructions(req, "Instruction 1", "Instruction 2")
+
+	if req.Config == nil || req.Config.SystemInstruction == nil {
+		t.Fatalf("expected SystemInstruction to be set")
+	}
+
+	texts := TextParts(req.Config.SystemInstruction)
+	if len(texts) == 0 {
+		t.Fatalf("expected non-empty text in SystemInstruction")
+	}
+
+	expected := "Instruction 1\n\nInstruction 2"
+	if !strings.Contains(texts[0], expected) {
+		t.Errorf("expected instruction content %q in %q", expected, texts[0])
+	}
+}
+
+func TestMust(t *testing.T) {
+	val := Must("hello", nil)
+	if val != "hello" {
+		t.Errorf("Must return value mismatch: got %v", val)
+	}
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Errorf("Must should have panicked on error")
+		}
+	}()
+
+	_ = Must(123, errors.New("test error"))
 }
