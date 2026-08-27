@@ -259,6 +259,9 @@ func (s *inMemoryService) AppendEvent(ctx context.Context, curSession Session, e
 }
 
 func (s *inMemoryService) updateAppState(appDelta stateMap, appName string) stateMap {
+	if s.appState == nil {
+		s.appState = make(map[string]stateMap)
+	}
 	innerMap, ok := s.appState[appName]
 	if !ok {
 		innerMap = make(stateMap)
@@ -269,6 +272,9 @@ func (s *inMemoryService) updateAppState(appDelta stateMap, appName string) stat
 }
 
 func (s *inMemoryService) updateUserState(userDelta stateMap, appName, userID string) stateMap {
+	if s.userState == nil {
+		s.userState = make(map[string]map[string]stateMap)
+	}
 	innerUsersMap, ok := s.userState[appName]
 	if !ok {
 		innerUsersMap = make(map[string]stateMap)
@@ -299,6 +305,10 @@ func (id id) Encode() string {
 
 func (id *id) Decode(key string) error {
 	return ordered.Decode([]byte(key), &id.appName, &id.userID, &id.sessionID)
+}
+
+func (id id) String() string {
+	return fmt.Sprintf("session(app=%s, user=%s, id=%s)", id.appName, id.userID, id.sessionID)
 }
 
 type id struct {

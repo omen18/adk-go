@@ -234,3 +234,27 @@ func TestInMemoryService_AppendEvent_PreservesInputEventTempState(t *testing.T) 
 		t.Errorf("expected non-temp key sk on stored event, got: %v", storedEvent.Actions.StateDelta)
 	}
 }
+
+func TestInMemoryService_DefensiveMapInit(t *testing.T) {
+	ctx := t.Context()
+	// Create service directly to test zero-initialized struct fields
+	service := session.InMemoryService()
+
+	resp, err := service.Create(ctx, &session.CreateRequest{
+		AppName: "app1",
+		UserID:  "user1",
+		State: map[string]any{
+			"app:k1":  "v1",
+			"user:k2": "v2",
+		},
+	})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	val, err := resp.Session.State().Get("app:k1")
+	if err != nil || val != "v1" {
+		t.Errorf("expected app:k1 to be v1, got %v, err=%v", val, err)
+	}
+}
+
