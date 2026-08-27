@@ -16,6 +16,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"strings"
 	"sync"
@@ -57,16 +58,20 @@ type inMemoryService struct {
 }
 
 func (s *inMemoryService) AddSessionToMemory(ctx context.Context, curSession session.Session) error {
+	if curSession == nil {
+		return fmt.Errorf("curSession is required")
+	}
+
 	var values []value
 
 	for event := range curSession.Events().All() {
-		if event.LLMResponse.Content == nil {
+		if event == nil || event.LLMResponse.Content == nil {
 			continue
 		}
 
 		words := make(map[string]struct{})
 		for _, part := range event.LLMResponse.Content.Parts {
-			if part.Text == "" {
+			if part == nil || part.Text == "" {
 				continue
 			}
 
@@ -107,6 +112,10 @@ func (s *inMemoryService) AddSessionToMemory(ctx context.Context, curSession ses
 }
 
 func (s *inMemoryService) SearchMemory(ctx context.Context, req *SearchRequest) (*SearchResponse, error) {
+	if req == nil {
+		return &SearchResponse{}, nil
+	}
+
 	queryWords := extractWords(req.Query)
 
 	k := key{
@@ -168,10 +177,11 @@ func extractWords(text string) map[string]struct{} {
 	res := make(map[string]struct{})
 
 	for s := range strings.SplitSeq(text, " ") {
-		if s == "" {
+		word := strings.Trim(s, ".,!?;:\"'()[]{}<>-")
+		if word == "" {
 			continue
 		}
-		res[strings.ToLower(s)] = struct{}{}
+		res[strings.ToLower(word)] = struct{}{}
 	}
 
 	return res

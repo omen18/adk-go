@@ -268,3 +268,48 @@ func Test_inMemoryService_SearchMemory_Concurrent(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func Test_inMemoryService_PunctuationAndNilHandling(t *testing.T) {
+	s := memory.InMemoryService()
+	ctx := t.Context()
+
+	// Test nil session
+	if err := s.AddSessionToMemory(ctx, nil); err == nil {
+		t.Errorf("expected error when adding nil session to memory")
+	}
+
+	// Test nil search request
+	res, err := s.SearchMemory(ctx, nil)
+	if err != nil || res == nil {
+		t.Fatalf("expected non-nil response without error for nil SearchRequest, got res=%v, err=%v", res, err)
+	}
+
+	// Test punctuation handling in search
+	sess := makeSession(t, "appPunct", "userPunct", "sessPunct", []*session.Event{
+		{
+			ID:     "e1",
+			Author: "user",
+			LLMResponse: model.LLMResponse{
+				Content: genai.NewContentFromText("Hello, world! This is a test.", genai.RoleUser),
+			},
+		},
+	})
+
+	if err := s.AddSessionToMemory(ctx, sess); err != nil {
+		t.Fatalf("AddSessionToMemory failed: %v", err)
+	}
+
+	// Search for 'hello' (without comma) should match 'Hello,'
+	resp, err := s.SearchMemory(ctx, &memory.SearchRequest{
+		AppName: "appPunct",
+		UserID:  "userPunct",
+		Query:   "hello",
+	})
+	if err != nil {
+		t.Fatalf("SearchMemory error: %v", err)
+	}
+	if len(resp.Memories) != 1 {
+		t.Errorf("expected 1 memory match for 'hello', got %d", len(resp.Memories))
+	}
+}
+
