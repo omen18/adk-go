@@ -136,3 +136,17 @@ type errTokenSource struct{}
 func (errTokenSource) Token() (*oauth2.Token, error) {
 	return nil, errors.New("token source failure")
 }
+
+func TestCredentialApply_NilHeader(t *testing.T) {
+	creds := []auth.Credential{
+		auth.APIKeyCredential{Name: "X-Key", Value: "val"},
+		auth.BearerCredential{Token: "token"},
+		auth.BasicCredential{Username: "user", Password: "pass"},
+		auth.WithHeaders(auth.BearerCredential{Token: "token"}, map[string]string{"A": "B"}),
+	}
+	for i, c := range creds {
+		if err := c.Apply(nil); err == nil {
+			t.Errorf("cred[%d] expected error when passing nil http.Header", i)
+		}
+	}
+}

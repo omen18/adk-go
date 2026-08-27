@@ -37,6 +37,9 @@ type APIKeyCredential struct {
 
 // Apply implements [Credential].
 func (c APIKeyCredential) Apply(h http.Header) error {
+	if h == nil {
+		return fmt.Errorf("auth: target http.Header is nil")
+	}
 	if c.Name == "" {
 		return fmt.Errorf("auth: api key credential missing header name")
 	}
@@ -51,6 +54,9 @@ type BearerCredential struct {
 
 // Apply implements [Credential].
 func (c BearerCredential) Apply(h http.Header) error {
+	if h == nil {
+		return fmt.Errorf("auth: target http.Header is nil")
+	}
 	if c.Token == "" {
 		return fmt.Errorf("auth: bearer credential missing token")
 	}
@@ -66,6 +72,9 @@ type BasicCredential struct {
 
 // Apply implements [Credential].
 func (c BasicCredential) Apply(h http.Header) error {
+	if h == nil {
+		return fmt.Errorf("auth: target http.Header is nil")
+	}
 	// An empty username or password alone is allowed; reject only when both are empty.
 	if c.Username == "" && c.Password == "" {
 		return fmt.Errorf("auth: basic credential missing username and password")
@@ -83,6 +92,9 @@ type OAuth2Credential struct {
 
 // Apply implements [Credential].
 func (c OAuth2Credential) Apply(h http.Header) error {
+	if h == nil {
+		return fmt.Errorf("auth: target http.Header is nil")
+	}
 	if c.TokenSource == nil {
 		return fmt.Errorf("auth: oauth2 credential missing token source")
 	}
@@ -107,6 +119,9 @@ type withHeaders struct {
 
 // Apply implements [Credential].
 func (c withHeaders) Apply(h http.Header) error {
+	if h == nil {
+		return fmt.Errorf("auth: target http.Header is nil")
+	}
 	if c.inner == nil {
 		return fmt.Errorf("auth: WithHeaders has nil inner credential")
 	}
