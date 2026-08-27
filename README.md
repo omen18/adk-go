@@ -39,12 +39,24 @@ This Go version of ADK is ideal for developers building cloud-native agent appli
 *   **Modular Multi-Agent Systems:** Design scalable applications by composing multiple specialized agents.
 *   **Deploy Anywhere:** Easily containerize and deploy agents, with strong support for cloud-native environments like Google Cloud Run.
 
-## 🚀 Installation
+## 🧪 Testing & Development
 
-To add ADK Go to your project, run:
+Run all unit tests across the repository:
 
 ```bash
-go get google.golang.org/adk/v2
+go test -v ./...
+```
+
+Run race detector tests for concurrent safety:
+
+```bash
+go test -v -race ./...
+```
+
+Run static analysis checks:
+
+```bash
+go vet ./...
 ```
 
 ## 📄 License
