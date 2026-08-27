@@ -104,3 +104,32 @@ func TestPackTool_NilDeclaration(t *testing.T) {
 		t.Fatalf("len(req.Config.Tools) = %d, want 0 (nil declaration adds nothing)", got)
 	}
 }
+
+func TestGetRequiredStringParam(t *testing.T) {
+	m := map[string]any{
+		"valid": "hello",
+		"empty": "",
+		"num":   123,
+	}
+
+	val, err := toolutils.GetRequiredStringParam(m, "valid")
+	if err != nil || val != "hello" {
+		t.Errorf("expected 'hello', got %q, err=%v", val, err)
+	}
+
+	if _, err := toolutils.GetRequiredStringParam(m, "empty"); err == nil {
+		t.Errorf("expected error for empty string")
+	}
+
+	if _, err := toolutils.GetRequiredStringParam(m, "missing"); err == nil {
+		t.Errorf("expected error for missing parameter")
+	}
+
+	if _, err := toolutils.GetRequiredStringParam(m, "num"); err == nil {
+		t.Errorf("expected error for non-string parameter")
+	}
+
+	if _, err := toolutils.GetRequiredStringParam(nil, "valid"); err == nil {
+		t.Errorf("expected error for nil map")
+	}
+}

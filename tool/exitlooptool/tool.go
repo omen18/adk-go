@@ -24,6 +24,9 @@ import (
 )
 
 func exitLoop(ctx agent.Context, myArgs struct{}) (map[string]string, error) {
+	if ctx == nil || ctx.Actions() == nil {
+		return nil, fmt.Errorf("exitlooptool: agent context or actions is nil")
+	}
 	ctx.Actions().Escalate = true
 	ctx.Actions().SkipSummarization = true
 	return map[string]string{}, nil

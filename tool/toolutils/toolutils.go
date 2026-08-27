@@ -72,3 +72,22 @@ func PackTool(req *model.LLMRequest, t Tool) error {
 	}
 	return nil
 }
+
+// GetRequiredStringParam extracts a required string parameter from a tool argument map.
+func GetRequiredStringParam(m map[string]any, paramName string) (string, error) {
+	if m == nil {
+		return "", fmt.Errorf("arguments map is nil")
+	}
+	val, ok := m[paramName]
+	if !ok {
+		return "", fmt.Errorf("missing required parameter %q", paramName)
+	}
+	strVal, ok := val.(string)
+	if !ok {
+		return "", fmt.Errorf("parameter %q must be a string, got %T", paramName, val)
+	}
+	if strVal == "" {
+		return "", fmt.Errorf("parameter %q cannot be empty", paramName)
+	}
+	return strVal, nil
+}
