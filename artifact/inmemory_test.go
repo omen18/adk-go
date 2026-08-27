@@ -15,7 +15,11 @@
 package artifact_test
 
 import (
+	"fmt"
+	"sync"
 	"testing"
+
+	"google.golang.org/genai"
 
 	"google.golang.org/adk/v2/artifact"
 	"google.golang.org/adk/v2/internal/artifact/tests"
@@ -26,4 +30,48 @@ func TestInMemoryArtifactService(t *testing.T) {
 		return artifact.InMemoryService(), nil
 	}
 	tests.TestArtifactService(t, "InMemory", factory)
+}
+
+func TestInMemoryArtifactService_Concurrent(t *testing.T) {
+	ctx := t.Context()
+	s := artifact.InMemoryService()
+
+	const workers = 8
+	var wg sync.WaitGroup
+
+	for i := 0; i < workers; i++ {
+		wg.Add(2)
+		// Writer goroutine
+		go func(w int) {
+			defer wg.Done()
+			for j := 0; j < 25; j++ {
+				fileName := fmt.Sprintf("file_%d_%d.txt", w, j)
+				_, err := s.Save(ctx, &artifact.SaveRequest{
+					AppName:   "app1",
+					UserID:    "user1",
+					SessionID: "sess1",
+					FileName:  fileName,
+					Part:      genai.NewPartFromText("data"),
+				})
+				if err != nil {
+					t.Errorf("Save error: %v", err)
+					return
+				}
+			}
+		}(i)
+
+		// Reader / Lister goroutine
+		go func(w int) {
+			defer wg.Done()
+			for j := 0; j < 25; j++ {
+				_, _ = s.List(ctx, &artifact.ListRequest{
+					AppName:   "app1",
+					UserID:    "user1",
+					SessionID: "sess1",
+				})
+			}
+		}(i)
+	}
+
+	wg.Wait()
 }

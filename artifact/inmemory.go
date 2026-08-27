@@ -77,9 +77,12 @@ func (ak *artifactKey) Decode(key string) error {
 	return nil
 }
 
+func (ak artifactKey) String() string {
+	return fmt.Sprintf("artifact(app=%s, user=%s, session=%s, file=%s, v=%d)", ak.AppName, ak.UserID, ak.SessionID, ak.FileName, ak.Version)
+}
+
 // scan returns an iterator over all key-value pairs
 // in the range begin ≤ key ≤ end.
-// TODO: add a concurrent tests.
 func (s *inMemoryService) scan(lo, hi string) iter.Seq2[artifactKey, *genai.Part] {
 	return func(yield func(key artifactKey, val *genai.Part) bool) {
 		for k, val := range s.artifacts.Scan(lo, hi) {
