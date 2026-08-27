@@ -376,3 +376,51 @@ func (f *FakeLLM) GenerateContent(ctx context.Context, req *model.LLMRequest, st
 		}
 	}
 }
+
+func TestLoopAgent_ContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel() // Cancel context immediately
+
+	subAgent := newCustomAgent(t, 1)
+	loopAg, err := loopagent.New(loopagent.Config{
+		MaxIterations: 10,
+		AgentConfig: agent.Config{
+			Name:      "canceled_loop",
+			SubAgents: []agent.Agent{subAgent},
+		},
+	})
+	if err != nil {
+		t.Fatalf("loopagent.New error: %v", err)
+	}
+
+	sessionService := session.InMemoryService()
+	agentRunner, err := runner.New(runner.Config{
+		AppName:        "test_app",
+		Agent:          loopAg,
+		SessionService: sessionService,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = sessionService.Create(t.Context(), &session.CreateRequest{
+		AppName:   "test_app",
+		UserID:    "user_id",
+		SessionID: "session_id",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gotError := false
+	for _, err := range agentRunner.Run(ctx, "user_id", "session_id", genai.NewContentFromText("user input", genai.RoleUser), agent.RunConfig{}) {
+		if err != nil {
+			gotError = true
+			break
+		}
+	}
+	if !gotError {
+		t.Errorf("expected error when running with canceled context")
+	}
+}
+

@@ -571,3 +571,81 @@ func TestSequentialAgent_RunLive_SequentialOrchestration(t *testing.T) {
 		t.Errorf("expected sub_agent_2 session to be closed at the end")
 	}
 }
+
+type errorAgent struct {
+	agent.Agent
+	executed bool
+}
+
+func (e *errorAgent) Run(ctx agent.InvocationContext) iter.Seq2[*session.Event, error] {
+	e.executed = true
+	return func(yield func(*session.Event, error) bool) {
+		yield(nil, fmt.Errorf("sub-agent failure"))
+	}
+}
+
+type trackingAgent struct {
+	agent.Agent
+	executed bool
+}
+
+func (t *trackingAgent) Run(ctx agent.InvocationContext) iter.Seq2[*session.Event, error] {
+	t.executed = true
+	return func(yield func(*session.Event, error) bool) {
+		yield(&session.Event{Author: "tracking"}, nil)
+	}
+}
+
+func TestSequentialAgent_ErrorAbortion(t *testing.T) {
+	ctx := t.Context()
+
+	errAg := &errorAgent{Agent: mustAgent(agent.New(agent.Config{Name: "err_agent"}))}
+	trackAg := &trackingAgent{Agent: mustAgent(agent.New(agent.Config{Name: "track_agent"}))}
+
+	seqAgent, err := sequentialagent.New(sequentialagent.Config{
+		AgentConfig: agent.Config{
+			Name:      "seq_error_agent",
+			SubAgents: []agent.Agent{errAg, trackAg},
+		},
+	})
+	if err != nil {
+		t.Fatalf("failed to create sequential agent: %v", err)
+	}
+
+	sessionService := session.InMemoryService()
+	agentRunner, err := runner.New(runner.Config{
+		AppName:        "test_app",
+		Agent:          seqAgent,
+		SessionService: sessionService,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = sessionService.Create(ctx, &session.CreateRequest{
+		AppName:   "test_app",
+		UserID:    "user_id",
+		SessionID: "session_id",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gotErr := false
+	for _, err := range agentRunner.Run(ctx, "user_id", "session_id", genai.NewContentFromText("user input", genai.RoleUser), agent.RunConfig{}) {
+		if err != nil {
+			gotErr = true
+		}
+	}
+
+	if !gotErr {
+		t.Errorf("expected error from sequential agent run")
+	}
+	if !errAg.executed {
+		t.Errorf("expected errorAgent to execute")
+	}
+	if trackAg.executed {
+		t.Errorf("expected trackingAgent NOT to execute after error in preceding sub-agent")
+	}
+}
+

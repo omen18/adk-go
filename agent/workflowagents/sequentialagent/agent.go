@@ -78,11 +78,22 @@ type sequentialAgent struct{}
 func (a *sequentialAgent) Run(ctx agent.InvocationContext) iter.Seq2[*session.Event, error] {
 	return func(yield func(*session.Event, error) bool) {
 		for _, subAgent := range ctx.Agent().SubAgents() {
+			if err := ctx.Err(); err != nil {
+				yield(nil, err)
+				return
+			}
+
+			hasError := false
 			for event, err := range subAgent.Run(ctx) {
-				// TODO: ensure consistency -- if there's an error, return and close iterator, verify everywhere in ADK.
 				if !yield(event, err) {
 					return
 				}
+				if err != nil {
+					hasError = true
+				}
+			}
+			if hasError {
+				return
 			}
 		}
 	}
