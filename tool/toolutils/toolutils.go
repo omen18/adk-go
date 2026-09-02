@@ -91,3 +91,142 @@ func GetRequiredStringParam(m map[string]any, paramName string) (string, error) 
 	}
 	return strVal, nil
 }
+
+// GetOptionalStringParam extracts an optional string parameter from a tool argument map.
+// If the key is missing or not a string or empty, it returns defaultVal.
+func GetOptionalStringParam(m map[string]any, paramName string, defaultVal string) string {
+	if m == nil {
+		return defaultVal
+	}
+	val, ok := m[paramName]
+	if !ok {
+		return defaultVal
+	}
+	strVal, ok := val.(string)
+	if !ok || strVal == "" {
+		return defaultVal
+	}
+	return strVal
+}
+
+// GetRequiredIntParam extracts a required integer parameter from a tool argument map.
+// Supports both int and float64 (from JSON unmarshaling).
+func GetRequiredIntParam(m map[string]any, paramName string) (int, error) {
+	if m == nil {
+		return 0, fmt.Errorf("arguments map is nil")
+	}
+	val, ok := m[paramName]
+	if !ok {
+		return 0, fmt.Errorf("missing required parameter %q", paramName)
+	}
+	switch v := val.(type) {
+	case int:
+		return v, nil
+	case int32:
+		return int(v), nil
+	case int64:
+		return int(v), nil
+	case float64:
+		return int(v), nil
+	default:
+		return 0, fmt.Errorf("parameter %q must be an integer, got %T", paramName, val)
+	}
+}
+
+// GetOptionalIntParam extracts an optional integer parameter from a tool argument map.
+func GetOptionalIntParam(m map[string]any, paramName string, defaultVal int) (int, error) {
+	if m == nil {
+		return defaultVal, nil
+	}
+	val, ok := m[paramName]
+	if !ok {
+		return defaultVal, nil
+	}
+	switch v := val.(type) {
+	case int:
+		return v, nil
+	case int32:
+		return int(v), nil
+	case int64:
+		return int(v), nil
+	case float64:
+		return int(v), nil
+	default:
+		return defaultVal, fmt.Errorf("parameter %q must be an integer, got %T", paramName, val)
+	}
+}
+
+// GetRequiredBoolParam extracts a required boolean parameter from a tool argument map.
+func GetRequiredBoolParam(m map[string]any, paramName string) (bool, error) {
+	if m == nil {
+		return false, fmt.Errorf("arguments map is nil")
+	}
+	val, ok := m[paramName]
+	if !ok {
+		return false, fmt.Errorf("missing required parameter %q", paramName)
+	}
+	boolVal, ok := val.(bool)
+	if !ok {
+		return false, fmt.Errorf("parameter %q must be a boolean, got %T", paramName, val)
+	}
+	return boolVal, nil
+}
+
+// GetOptionalBoolParam extracts an optional boolean parameter from a tool argument map.
+func GetOptionalBoolParam(m map[string]any, paramName string, defaultVal bool) (bool, error) {
+	if m == nil {
+		return defaultVal, nil
+	}
+	val, ok := m[paramName]
+	if !ok {
+		return defaultVal, nil
+	}
+	boolVal, ok := val.(bool)
+	if !ok {
+		return defaultVal, fmt.Errorf("parameter %q must be a boolean, got %T", paramName, val)
+	}
+	return boolVal, nil
+}
+
+// GetRequiredFloatParam extracts a required float64 parameter from a tool argument map.
+func GetRequiredFloatParam(m map[string]any, paramName string) (float64, error) {
+	if m == nil {
+		return 0, fmt.Errorf("arguments map is nil")
+	}
+	val, ok := m[paramName]
+	if !ok {
+		return 0, fmt.Errorf("missing required parameter %q", paramName)
+	}
+	switch v := val.(type) {
+	case float64:
+		return v, nil
+	case float32:
+		return float64(v), nil
+	case int:
+		return float64(v), nil
+	default:
+		return 0, fmt.Errorf("parameter %q must be a float, got %T", paramName, val)
+	}
+}
+
+// GetOptionalFloatParam extracts an optional float64 parameter from a tool argument map.
+func GetOptionalFloatParam(m map[string]any, paramName string, defaultVal float64) (float64, error) {
+	if m == nil {
+		return defaultVal, nil
+	}
+	val, ok := m[paramName]
+	if !ok {
+		return defaultVal, nil
+	}
+	switch v := val.(type) {
+	case float64:
+		return v, nil
+	case float32:
+		return float64(v), nil
+	case int:
+		return float64(v), nil
+	default:
+		return defaultVal, fmt.Errorf("parameter %q must be a float, got %T", paramName, val)
+	}
+}
+
