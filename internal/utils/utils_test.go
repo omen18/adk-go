@@ -103,6 +103,21 @@ func TestFunctionDecls(t *testing.T) {
 		t.Errorf("FunctionDecls(nil) should return empty slice")
 	}
 
+	cfgWithNilTool := &genai.GenerateContentConfig{
+		Tools: []*genai.Tool{
+			nil,
+			{
+				FunctionDeclarations: []*genai.FunctionDeclaration{
+					{Name: "f1"},
+				},
+			},
+		},
+	}
+	declsNil := FunctionDecls(cfgWithNilTool)
+	if len(declsNil) != 1 || declsNil[0].Name != "f1" {
+		t.Errorf("unexpected function decls with nil tool: %v", declsNil)
+	}
+
 	cfg := &genai.GenerateContentConfig{
 		Tools: []*genai.Tool{
 			{
@@ -120,6 +135,9 @@ func TestFunctionDecls(t *testing.T) {
 }
 
 func TestAppendInstructions(t *testing.T) {
+	// Should safely handle nil request
+	AppendInstructions(nil, "some instructions")
+
 	req := &model.LLMRequest{}
 	AppendInstructions(req, "Instruction 1", "Instruction 2")
 

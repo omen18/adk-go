@@ -121,7 +121,9 @@ func FunctionDecls(c *genai.GenerateContentConfig) (ret []*genai.FunctionDeclara
 		return nil
 	}
 	for _, t := range c.Tools {
-		ret = append(ret, t.FunctionDeclarations...)
+		if t != nil {
+			ret = append(ret, t.FunctionDeclarations...)
+		}
 	}
 	return ret
 }
@@ -135,7 +137,7 @@ func Must[T any](a T, err error) T {
 
 // AppendInstructions appends instructions to the [genai.GenerateContentConfig.SystemInstruction] system instruction.
 func AppendInstructions(r *model.LLMRequest, instructions ...string) {
-	if len(instructions) == 0 {
+	if r == nil || len(instructions) == 0 {
 		return
 	}
 
