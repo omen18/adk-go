@@ -315,4 +315,3 @@ func TestGetOptionalFloatParam(t *testing.T) {
 		t.Errorf("expected error for bad type")
 	}
 }
-

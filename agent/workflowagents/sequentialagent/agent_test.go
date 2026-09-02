@@ -648,4 +648,3 @@ func TestSequentialAgent_ErrorAbortion(t *testing.T) {
 		t.Errorf("expected trackingAgent NOT to execute after error in preceding sub-agent")
 	}
 }
-

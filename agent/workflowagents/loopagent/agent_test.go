@@ -423,4 +423,3 @@ func TestLoopAgent_ContextCancellation(t *testing.T) {
 		t.Errorf("expected error when running with canceled context")
 	}
 }
-

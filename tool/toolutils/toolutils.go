@@ -94,7 +94,7 @@ func GetRequiredStringParam(m map[string]any, paramName string) (string, error) 
 
 // GetOptionalStringParam extracts an optional string parameter from a tool argument map.
 // If the key is missing or not a string or empty, it returns defaultVal.
-func GetOptionalStringParam(m map[string]any, paramName string, defaultVal string) string {
+func GetOptionalStringParam(m map[string]any, paramName, defaultVal string) string {
 	if m == nil {
 		return defaultVal
 	}
@@ -229,4 +229,3 @@ func GetOptionalFloatParam(m map[string]any, paramName string, defaultVal float6
 		return defaultVal, fmt.Errorf("parameter %q must be a float, got %T", paramName, val)
 	}
 }
-

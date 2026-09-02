@@ -398,7 +398,8 @@ func ResolveAgentReference(ctx context.Context, parentPath, refPath string) (age
 	}
 	if !strings.HasPrefix(checkPath, parentDir+string(os.PathSeparator)) && checkPath != parentDir {
 		return nil, fmt.Errorf(
-			"path traversal detected: config_path %q resolves outside agent directory", refPath)
+			"path traversal detected: config_path %q resolves outside agent directory", refPath,
+		)
 	}
 
 	registryMu.RLock()

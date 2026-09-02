@@ -331,5 +331,3 @@ func TestInMemoryService_ConcurrentGetAndList(t *testing.T) {
 
 	wg.Wait()
 }
-
-
