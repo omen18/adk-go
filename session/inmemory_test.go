@@ -15,6 +15,7 @@
 package session_test
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -257,4 +258,78 @@ func TestInMemoryService_DefensiveMapInit(t *testing.T) {
 		t.Errorf("expected app:k1 to be v1, got %v, err=%v", val, err)
 	}
 }
+
+func TestInMemoryService_ConcurrentGetAndList(t *testing.T) {
+	ctx := t.Context()
+	service := session.InMemoryService()
+	const appName = "concurrent-app"
+	const numUsers = 5
+	const sessionsPerUser = 4
+
+	// Prepopulate sessions
+	for u := 0; u < numUsers; u++ {
+		userID := fmt.Sprintf("user-%d", u)
+		for s := 0; s < sessionsPerUser; s++ {
+			sessionID := fmt.Sprintf("session-%d-%d", u, s)
+			_, err := service.Create(ctx, &session.CreateRequest{
+				AppName:   appName,
+				UserID:    userID,
+				SessionID: sessionID,
+				State: map[string]any{
+					"key": fmt.Sprintf("val-%d-%d", u, s),
+				},
+			})
+			if err != nil {
+				t.Fatalf("Create failed: %v", err)
+			}
+		}
+	}
+
+	var wg sync.WaitGroup
+	const goroutines = 20
+	const iterations = 50
+
+	for g := 0; g < goroutines; g++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			for i := 0; i < iterations; i++ {
+				u := (workerID + i) % numUsers
+				s := (workerID + i) % sessionsPerUser
+				userID := fmt.Sprintf("user-%d", u)
+				sessionID := fmt.Sprintf("session-%d-%d", u, s)
+
+				// Get session
+				getResp, err := service.Get(ctx, &session.GetRequest{
+					AppName:   appName,
+					UserID:    userID,
+					SessionID: sessionID,
+				})
+				if err != nil {
+					t.Errorf("Get failed for %s/%s: %v", userID, sessionID, err)
+					return
+				}
+				if getResp.Session.ID() != sessionID {
+					t.Errorf("ID mismatch: got %q, want %q", getResp.Session.ID(), sessionID)
+				}
+
+				// List user sessions
+				listResp, err := service.List(ctx, &session.ListRequest{
+					AppName: appName,
+					UserID:  userID,
+				})
+				if err != nil {
+					t.Errorf("List failed for %s: %v", userID, err)
+					return
+				}
+				if len(listResp.Sessions) != sessionsPerUser {
+					t.Errorf("List returned %d sessions, want %d", len(listResp.Sessions), sessionsPerUser)
+				}
+			}
+		}(g)
+	}
+
+	wg.Wait()
+}
+
 
